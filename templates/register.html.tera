@@ -1,0 +1,20 @@
+{% extends "base.html.tera" %}
+
+{% block title -%} Register {%- endblock %}
+
+{% block content %}
+  <h1>Register</h1>
+  <form action="/register" method="post">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="first-name">
+    <input type="text" id="name" name="last-name">
+
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" />
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" />
+
+    <input type="submit" value="Register" />
+  </form>
+{% endblock %}
