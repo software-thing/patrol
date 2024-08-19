@@ -86,13 +86,13 @@ impl Claims {
         user: users::Model,
         roles: Vec<String>,
     ) -> anyhow::Result<Self> {
-        let year_from_now = Utc::now() + Duration::days(365);
+        let month_from_now = Utc::now() + Duration::days(30);
 
         let jti = crypto::id();
         let key = format!("token:{}:{}", user.username, jti);
-        let exp = year_from_now.timestamp().unsigned_abs();
+        let exp = month_from_now.timestamp().unsigned_abs();
 
-        redis.clone().set_ex(key, &jti, exp).await?;
+        redis.clone().set_ex(key, "", exp).await?;
 
         Ok(Self {
             iss: "patrol".to_string(),
