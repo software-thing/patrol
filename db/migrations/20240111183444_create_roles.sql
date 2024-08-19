@@ -5,15 +5,16 @@ CREATE TABLE IF NOT EXISTS "roles" (
 );
 
 CREATE TABLE IF NOT EXISTS "users_roles" (
-  "user_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+  "user_username" VARCHAR(64) NOT NULL REFERENCES "users"("username") ON DELETE CASCADE,
   "role_title" TEXT NOT NULL REFERENCES "roles"("title") ON DELETE CASCADE,
 
-  PRIMARY KEY ("user_id", "role_title")
+  PRIMARY KEY ("user_username", "role_title")
 );
 
-CREATE INDEX IF NOT EXISTS "users_roles_user_id" ON "users_roles"("user_id");
+CREATE INDEX IF NOT EXISTS "users_roles_user_username" ON "users_roles"("user_username");
+CREATE INDEX IF NOT EXISTS "users_roles_role_title" ON "users_roles"("role_title");
 
-INSERT INTO "roles"("title") VALUES ('admin');
+INSERT INTO "roles" VALUES ('admin');
 
 -- migrate:down
 

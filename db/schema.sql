@@ -9,20 +9,6 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: uuid-ossp; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-
-
---
--- Name: EXTENSION "uuid-ossp"; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UUIDs)';
-
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -50,10 +36,9 @@ CREATE TABLE public.schema_migrations (
 --
 
 CREATE TABLE public.users (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    username text NOT NULL,
-    first_name text NOT NULL,
-    last_name text NOT NULL,
+    username character varying(64) NOT NULL,
+    first_name character varying(64) NOT NULL,
+    last_name character varying(64) NOT NULL,
     password_hash text NOT NULL,
     password_hash_previous text,
     password_changed_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -68,7 +53,7 @@ CREATE TABLE public.users (
 --
 
 CREATE TABLE public.users_roles (
-    user_id uuid NOT NULL,
+    user_username character varying(64) NOT NULL,
     role_title text NOT NULL
 );
 
@@ -94,7 +79,7 @@ ALTER TABLE ONLY public.schema_migrations
 --
 
 ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+    ADD CONSTRAINT users_pkey PRIMARY KEY (username);
 
 
 --
@@ -102,22 +87,14 @@ ALTER TABLE ONLY public.users
 --
 
 ALTER TABLE ONLY public.users_roles
-    ADD CONSTRAINT users_roles_pkey PRIMARY KEY (user_id, role_title);
+    ADD CONSTRAINT users_roles_pkey PRIMARY KEY (user_username, role_title);
 
 
 --
--- Name: users users_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: users_roles_user_username; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_username_key UNIQUE (username);
-
-
---
--- Name: users_roles_user_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX users_roles_user_id ON public.users_roles USING btree (user_id);
+CREATE INDEX users_roles_user_username ON public.users_roles USING btree (user_username);
 
 
 --
@@ -129,11 +106,11 @@ ALTER TABLE ONLY public.users_roles
 
 
 --
--- Name: users_roles users_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: users_roles users_roles_user_username_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.users_roles
-    ADD CONSTRAINT users_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+    ADD CONSTRAINT users_roles_user_username_fkey FOREIGN KEY (user_username) REFERENCES public.users(username) ON DELETE CASCADE;
 
 
 --

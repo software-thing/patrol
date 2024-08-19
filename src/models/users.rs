@@ -1,12 +1,9 @@
-use sea_orm::{entity::prelude::*, Set};
+use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
-    pub id: Uuid,
-
-    #[sea_orm(unique)]
+    #[sea_orm(primary_key)]
     pub username: String,
 
     pub first_name: String,
@@ -24,11 +21,13 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_many = "super::roles::Entity")]
+    #[sea_orm(has_many = "super::Roles")]
     Roles,
+    #[sea_orm(has_many = "super::Tokens")]
+    Tokens,
 }
 
-impl Related<super::roles::Entity> for Entity {
+impl Related<super::Roles> for Entity {
     fn to() -> RelationDef {
         super::users_roles::Relation::Role.def()
     }
@@ -38,15 +37,13 @@ impl Related<super::roles::Entity> for Entity {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {
-    fn new() -> Self {
-        Self {
-            password_hash_previous: Set(None),
-
-            ..ActiveModelTrait::default()
-        }
+impl Related<super::Tokens> for Entity {
+    fn to() -> RelationDef {
+        Relation::Tokens.def()
     }
 }
+
+impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
     pub fn find_by_username(username: String) -> Select<Entity> {
