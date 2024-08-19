@@ -45,14 +45,14 @@ pub async fn jwk() -> anyhow::Result<&'static Value> {
         let jwk = Jwk {
             algorithm: AlgorithmParameters::RSA(RSAKeyParameters {
                 key_type: RSAKeyType::RSA,
-                n: URL_SAFE_NO_PAD.encode(public_key.n().to_bytes_le()),
-                e: URL_SAFE_NO_PAD.encode(public_key.e().to_bytes_le()),
+                n: URL_SAFE_NO_PAD.encode(public_key.n().to_bytes_be()),
+                e: URL_SAFE_NO_PAD.encode(public_key.e().to_bytes_be()),
             }),
             common: CommonParameters {
                 public_key_use: Some(PublicKeyUse::Signature),
                 key_operations: Some(vec![KeyOperations::Verify]),
                 key_algorithm: Some(KeyAlgorithm::RS384),
-                key_id: None,
+                key_id: Some("main".to_string()),
                 x509_url: None,
                 x509_chain: None,
                 x509_sha1_fingerprint: None,

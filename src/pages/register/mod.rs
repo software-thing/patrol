@@ -14,8 +14,10 @@ use crate::{
     models::{users, users_roles},
 };
 
+pub mod is_available;
+
 #[handler]
-pub async fn get(tera: Data<&Tera>) -> anyhow::Result<Html<String>> {
+pub async fn get(Data((tera, _context)): Data<&(Tera, Context)>) -> anyhow::Result<Html<String>> {
     let context = Context::new();
 
     tera.render("register.html.tera", &context)
@@ -65,7 +67,7 @@ pub async fn post(
 
     if is_admin {
         users_roles::ActiveModel {
-            user_id: Set(user.id),
+            user_username: Set(user.username),
             role_title: Set("admin".to_string()),
         }
         .insert(&txn)

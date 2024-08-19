@@ -4,6 +4,6 @@
 
 {% block content %}
   <h1>Account</h1>
-  <p>Logged in as {{ user.username }}</p>
-  <a href="/logout">Logout</a>
+  <p>Logged in as {{ user.sub }}</p>
+  <a href="{{ base_path }}/logout">Logout</a>
 {% endblock %}

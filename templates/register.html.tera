@@ -4,13 +4,21 @@
 
 {% block content %}
   <h1>Register</h1>
-  <form action="/register" method="post">
+  <form method="post">
     <label for="name">Name</label>
     <input type="text" id="name" name="first-name">
     <input type="text" id="name" name="last-name">
 
-    <label for="username">Username</label>
+    <label
+      for="username"
+      hx-get="is-available"
+      hx-trigger="input delay:1s"
+      hx-target="next .error"
+    >
+      Username
+    </label>
     <input type="text" id="username" name="username" />
+    <p class="error"></p>
 
     <label for="password">Password</label>
     <input type="password" id="password" name="password" />

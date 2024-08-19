@@ -1,7 +1,11 @@
+use poem::{handler, web::Redirect, IntoResponse, Response};
+
 pub mod account;
 pub mod login;
+pub mod logout;
 pub mod register;
 
-pub struct ReturnTo {
-    pub return_to: String,
+#[handler]
+pub async fn index() -> Response {
+    Redirect::see_other("/patrol/login").into_response()
 }
