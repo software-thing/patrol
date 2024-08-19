@@ -7,7 +7,8 @@ use std::{
 use dotenvy::dotenv;
 use poem::{
     endpoint::{EmbeddedFileEndpoint, EmbeddedFilesEndpoint},
-    get,
+    get, handler,
+    http::StatusCode,
     listener::TcpListener,
     middleware::CookieJarManager,
     EndpointExt, Route, Server,
@@ -56,8 +57,7 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let mut context = tera::Context::new();
-    // context.insert("styles", &styles_path);
+    let context = tera::Context::new();
 
     // Connect to the database
     log::info!("Connecting to the database");
@@ -85,6 +85,7 @@ async fn main() -> anyhow::Result<()> {
     let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
 
     let app = Route::new()
+        .at("/heartbeat", get(heartbeat))
         .nest("/.well-known", well_known_routes)
         .at(
             "/register",
@@ -124,4 +125,9 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     Ok(())
+}
+
+#[handler]
+async fn heartbeat() -> StatusCode {
+    StatusCode::OK
 }
