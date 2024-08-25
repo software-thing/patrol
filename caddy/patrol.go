@@ -2,17 +2,24 @@ package patrol
 
 import (
 	"context"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp/caddyauth"
-	"github.com/lestrrat-go/jwx/jwt"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 const jwkUrl = "http://patrol:7287/.well-known/jwks.json"
+const redisUrl = "redis://valkey:6379"
 
 func init() {
 	caddy.RegisterModule(Patrol{})
@@ -22,6 +29,7 @@ func init() {
 type Patrol struct {
 	jwkSet *jwk.Set
 
+	redis  *redis.Client
 	logger *zap.Logger
 }
 
@@ -37,6 +45,14 @@ func (p *Patrol) Validate() error {
 	}
 
 	p.jwkSet = &jwkSet
+
+	redisOpts, err := redis.ParseURL(redisUrl)
+	if err != nil {
+		return err
+	}
+
+	p.redis = redis.NewClient(redisOpts)
+
 	return nil
 }
 
@@ -48,31 +64,64 @@ func (Patrol) CaddyModule() caddy.ModuleInfo {
 }
 
 func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.User, bool, error) {
+	// Extract the Patrol cookie
 	cookie, err := r.Cookie("patrol")
 	if err != nil {
+		http.Redirect(w, r, "/patrol/login", http.StatusSeeOther)
+		defer p.logger.Error("No cookie found", zap.Error(err))
 		return caddyauth.User{}, false, nil
 	}
 
-	token, err := jwt.ParseString(cookie.Value, jwt.WithIssuer("patrol"))
+	// Validate the JWT
+	token, err := jwt.ParseString(
+		cookie.Value,
+		jwt.WithIssuer("patrol"),
+		jwt.WithKeySet(*p.jwkSet),
+		jwt.WithAcceptableSkew(time.Minute),
+	)
+	if err != nil {
+		http.Redirect(w, r, "/patrol/login", http.StatusSeeOther)
+		defer p.logger.Error("Invalid token", zap.Error(err))
+		return caddyauth.User{}, false, nil
+	}
+
+	// Check Redis whether the key is still active
+	key := fmt.Sprintf("token:%s:%s", token.Subject(), token.JwtID())
+	exists, err := p.redis.Exists(context.Background(), key).Result()
 	if err != nil {
 		return caddyauth.User{}, false, err
 	}
 
-	p.logger.Info("Token", zap.Any("token", token))
+	if exists != 1 {
+		return caddyauth.User{}, false, nil
+	}
 
-	http.Redirect(w, r, "/patrol/login", http.StatusSeeOther)
+	base64URLPayload := strings.Split(cookie.Value, ".")
+	if len(base64URLPayload) != 3 {
+		return caddyauth.User{}, false, errors.New("invalid token")
+	}
 
-	return caddyauth.User{}, true, nil
-}
+	payload, err := base64.RawURLEncoding.DecodeString(base64URLPayload[1])
+	if err != nil {
+		return caddyauth.User{}, false, err
+	}
 
-func (p *Patrol) Error(err error) {
-	p.logger.Error("Patrol error", zap.Error(err))
+	var dataBuilder strings.Builder
+	for _, b := range payload {
+		if b < 128 {
+			dataBuilder.WriteByte(b)
+		} else {
+			dataBuilder.WriteString("\\u" + strconv.FormatInt(int64(b), 16))
+		}
+	}
+
+	r.Header.Set("X-Patrol", dataBuilder.String())
+
+	return caddyauth.User{ID: token.Subject()}, true, nil
 }
 
 var (
 	_ caddy.Provisioner       = (*Patrol)(nil)
 	_ caddy.Validator         = (*Patrol)(nil)
 	_ caddyauth.Authenticator = (*Patrol)(nil)
-
-	// _ httprc.ErrSink = (*Patrol)(nil)
 )
