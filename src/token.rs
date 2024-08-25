@@ -56,8 +56,6 @@ pub async fn not_logged_in_middleware<E: Endpoint>(
     }
 }
 
-pub struct IsLoggedIn(bool);
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Claims {
     /// Issuer
