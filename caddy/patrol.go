@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -21,9 +22,14 @@ import (
 const jwkUrl = "http://patrol:7287/.well-known/jwks.json"
 const redisUrl = "redis://valkey:6379"
 
+var patrolBasePath = "/patrol"
+
 func init() {
+	if path := os.Getenv("PATROL_BASE_PATH"); path != "" {
+		patrolBasePath = path
+	}
+
 	caddy.RegisterModule(Patrol{})
-	fmt.Println("Patrol module registered")
 }
 
 type Patrol struct {
@@ -67,7 +73,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 	// Extract the Patrol cookie
 	cookie, err := r.Cookie("patrol")
 	if err != nil {
-		http.Redirect(w, r, "/patrol/login", http.StatusSeeOther)
+		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
 		defer p.logger.Error("No cookie found", zap.Error(err))
 		return caddyauth.User{}, false, nil
 	}
@@ -80,7 +86,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 		jwt.WithAcceptableSkew(time.Minute),
 	)
 	if err != nil {
-		http.Redirect(w, r, "/patrol/login", http.StatusSeeOther)
+		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
 		defer p.logger.Error("Invalid token", zap.Error(err))
 		return caddyauth.User{}, false, nil
 	}
@@ -107,11 +113,11 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 	}
 
 	var dataBuilder strings.Builder
-	for _, b := range payload {
+	for _, b := range string(payload) {
 		if b < 128 {
-			dataBuilder.WriteByte(b)
+			dataBuilder.WriteRune(b)
 		} else {
-			dataBuilder.WriteString("\\u" + strconv.FormatInt(int64(b), 16))
+			dataBuilder.WriteString("\\u" + fmt.Sprintf("%04s", strconv.FormatInt(int64(b), 16)))
 		}
 	}
 
