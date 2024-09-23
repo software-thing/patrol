@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1"
+anyhow = "1.0.86"
 argon2 = { version = "0.5.3", features = ["std"] }
 base64 = "0.22.1"
 chrono = { version = "0.4.38", default-features = false }
@@ -17,11 +17,16 @@ password-hash = { version = "0.5.0", features = ["std"] }
 poem = { version = "3.0.4", features = ["anyhow", "cookie", "embed"] }
 pretty_env_logger = "0.5.0"
 rsa = "0.9.6"
-serde = "1.0.208"
-serde_json = "1.0.125"
-tera = "1"
+serde = "1.0.209"
+serde_json = "1.0.127"
+tera = "1.20.0"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 uuid = "1.10.0"
+
+[dependencies.lettre]
+version = "0.11.7"
+default-features = false
+features = ["builder", "smtp-transport", "pool", "tokio1-rustls-tls"]
 
 [dependencies.redis]
 version = "0.26.1"
@@ -29,7 +34,7 @@ default-features = false
 features = ["aio", "connection-manager", "tokio-comp", "uuid"]
 
 [dependencies.sea-orm]
-version = "1.0.0"
+version = "1.0.1"
 features = [
   "macros",
   "sqlx-postgres",
