@@ -5,8 +5,10 @@ CREATE TABLE IF NOT EXISTS "roles" (
 );
 
 CREATE TABLE IF NOT EXISTS "users_roles" (
-  "user_username" VARCHAR(64) NOT NULL REFERENCES "users"("username") ON DELETE CASCADE,
+  "user_username" TEXT NOT NULL REFERENCES "users"("username") ON DELETE CASCADE,
   "role_title" TEXT NOT NULL REFERENCES "roles"("title") ON DELETE CASCADE,
+
+  "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY ("user_username", "role_title")
 );
@@ -18,7 +20,8 @@ INSERT INTO "roles" VALUES ('admin');
 
 -- migrate:down
 
-DROP INDEX IF EXISTS "users_roles_user_id";
+DROP INDEX IF EXISTS "users_roles_user_username";
+DROP INDEX IF EXISTS "users_roles_role_title";
 
 DROP TABLE IF EXISTS "users_roles";
 

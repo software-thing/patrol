@@ -8,6 +8,8 @@ pub struct Model {
 
     #[sea_orm(primary_key, auto_increment = false)]
     role_title: String,
+
+    created_at: DateTimeUtc,
 }
 
 #[derive(DerivePartialModel, FromQueryResult)]

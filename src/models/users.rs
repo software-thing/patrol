@@ -3,7 +3,7 @@ use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "users")]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = true)]
     pub username: String,
 
     pub first_name: String,
@@ -23,8 +23,8 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::Roles")]
     Roles,
-    #[sea_orm(has_many = "super::Tokens")]
-    Tokens,
+    #[sea_orm(has_many = "super::Sessions")]
+    Sessions,
 }
 
 impl Related<super::Roles> for Entity {
@@ -37,9 +37,9 @@ impl Related<super::Roles> for Entity {
     }
 }
 
-impl Related<super::Tokens> for Entity {
+impl Related<super::Sessions> for Entity {
     fn to() -> RelationDef {
-        Relation::Tokens.def()
+        Relation::Sessions.def()
     }
 }
 
