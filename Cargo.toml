@@ -23,23 +23,6 @@ tera = "1.20.0"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal"] }
 uuid = "1.10.0"
 
-[dependencies.lettre]
-version = "0.11.7"
-default-features = false
-features = ["builder", "smtp-transport", "pool", "tokio1-rustls-tls"]
-
-[dependencies.redis]
-version = "0.26.1"
-default-features = false
-features = ["aio", "connection-manager", "tokio-comp", "uuid"]
-
 [dependencies.sea-orm]
 version = "1.0.1"
-features = [
-  "macros",
-  "sqlx-postgres",
-  "postgres-array",
-  "runtime-tokio-rustls",
-  "with-chrono",
-  "with-uuid",
-]
+features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls", "with-chrono"]
