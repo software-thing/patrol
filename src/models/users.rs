@@ -15,6 +15,8 @@ pub struct Model {
 
     pub profile_picture: bool,
 
+    pub approved: bool,
+
     pub created_at: DateTimeUtc,
     pub updated_at: DateTimeUtc,
 }
