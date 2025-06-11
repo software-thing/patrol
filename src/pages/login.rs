@@ -1,5 +1,5 @@
 use poem::{
-    error::{InternalServerError, Unauthorized},
+    error::InternalServerError,
     handler,
     http::StatusCode,
     web::{
@@ -8,16 +8,12 @@ use poem::{
     },
     IntoResponse,
 };
-use redis::{aio::ConnectionManager, AsyncCommands};
-use sea_orm::{DatabaseConnection, ModelTrait, QuerySelect};
+
+use sea_orm::DatabaseConnection;
 use serde::Deserialize;
 use tera::{Context, Tera};
 
-use crate::{
-    crypto,
-    models::{roles, users, users_roles},
-    token,
-};
+use crate::{crypto, models::users, session, BASE_PATH};
 
 #[handler]
 pub async fn get(Data((tera, context)): Data<&(Tera, Context)>) -> anyhow::Result<Html<String>> {
@@ -36,7 +32,6 @@ struct UserLogin {
 pub async fn post(
     Data((tera, context)): Data<&(Tera, Context)>,
     Data(db): Data<&DatabaseConnection>,
-    Data(redis): Data<&ConnectionManager>,
     cookie_jar: &CookieJar,
     user_login: Form<UserLogin>,
 ) -> poem::Result<poem::Response> {
@@ -60,21 +55,13 @@ pub async fn post(
             .map(|html| Html(html).into_response());
     }
 
-    let roles = user
-        .find_related(roles::Entity)
-        .select_only()
-        .column(users_roles::Column::RoleTitle)
-        .into_tuple()
-        .all(db)
+    let session_id = session::new(db, user.username)
         .await
-        .map_err(anyhow::Error::new)?;
+        .map_err(|_| poem::Error::from_status(StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let claims = token::Claims::new(redis, user, roles).await?;
-    let token = token::new(claims).await?;
-
-    let cookie = Cookie::new_with_str(token::PATROL_COOKIE, token);
+    let cookie = Cookie::new_with_str(session::PATROL_COOKIE, session_id);
 
     cookie_jar.add(cookie);
 
-    return Ok(Redirect::see_other("/patrol/account").into_response());
+    return Ok(Redirect::see_other(BASE_PATH.to_string() + "/account").into_response());
 }

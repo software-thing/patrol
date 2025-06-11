@@ -1,25 +1,14 @@
 use poem::{
     handler,
-    web::{cookie::CookieJar, Data, Redirect},
+    web::{cookie::CookieJar, Redirect},
     IntoResponse,
 };
-use redis::{aio::ConnectionManager, AsyncCommands};
-use uuid::Uuid;
 
-use crate::token::{self, Claims};
+use crate::session;
 
 #[handler]
-pub async fn get(
-    Data(redis): Data<&ConnectionManager>,
-    Data(user): Data<&Claims>,
-    cookie_jar: &CookieJar,
-) -> anyhow::Result<poem::Response> {
-    redis
-        .clone()
-        .del(format!("token:{}:{}", user.sub, user.jti))
-        .await?;
-
-    cookie_jar.remove(token::PATROL_COOKIE);
+pub async fn get(cookie_jar: &CookieJar) -> anyhow::Result<poem::Response> {
+    cookie_jar.remove(session::PATROL_COOKIE);
 
     Ok(Redirect::see_other("/patrol/login").into_response())
 }
