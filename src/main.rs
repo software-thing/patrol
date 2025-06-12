@@ -6,16 +6,12 @@ use std::{
 
 use dotenvy::dotenv;
 use poem::{
-    endpoint::{EmbeddedFileEndpoint, EmbeddedFilesEndpoint},
-    get, handler,
-    http::StatusCode,
-    listener::TcpListener,
-    middleware::CookieJarManager,
+    get, handler, http::StatusCode, listener::TcpListener, middleware::CookieJarManager,
     EndpointExt, Route, Server,
 };
 use sea_orm::Database;
 use tera::Tera;
-use tokio::signal::ctrl_c;
+use tokio::{join, signal::ctrl_c};
 
 use crate::is_first_admin_registered::is_first_admin_registered;
 
@@ -24,7 +20,7 @@ mod is_first_admin_registered;
 mod keys;
 mod models;
 mod pages;
-mod token;
+mod session;
 mod well_known;
 
 const BASE_PATH: &'static str = "/patrol";
@@ -71,16 +67,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Connect to Redis
     log::info!("Connecting to Redis for token storage");
-    let redis_url = env::var("REDIS_URL").expect("REDIS_URL is not set");
-    let redis = redis::Client::open(redis_url)?
-        .get_connection_manager()
-        .await?;
 
     let authenticated_routes = Route::new()
         .at("/", get(pages::index))
         .at("/account", get(pages::account::get))
-        .at("/logout", get(pages::logout::get))
-        .around(token::token_middleware);
+        .at("/logout", get(pages::logout::get));
 
     let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
 
@@ -89,20 +80,13 @@ async fn main() -> anyhow::Result<()> {
         .nest("/.well-known", well_known_routes)
         .at(
             "/register",
-            get(pages::register::get)
-                .post(pages::register::post)
-                .around(token::not_logged_in_middleware),
+            get(pages::register::get).post(pages::register::post),
         )
         .at(
             "/register/is-available",
             get(pages::register::is_available::get),
         )
-        .at(
-            "/login",
-            get(pages::login::get)
-                .post(pages::login::post)
-                .around(token::not_logged_in_middleware),
-        )
+        .at("/login", get(pages::login::get).post(pages::login::post))
         // .nest(
         //     "/static".to_string() + &styles_path,
         //     EmbeddedFileEndpoint::<Static>::new(&styles_path),
@@ -110,19 +94,30 @@ async fn main() -> anyhow::Result<()> {
         .nest("/", authenticated_routes)
         .with(CookieJarManager::new())
         .data((tera, context))
-        .data(database)
-        .data(redis)
+        .data(database.clone())
         .data(is_first_admin_registered);
 
+    let app_session = Route::new()
+        .at("/session", get(session::ep::get))
+        .data(database);
+
     log::info!("Starting server");
+
     let socket_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 7287);
-    Server::new(TcpListener::bind(socket_addr))
-        .run_with_graceful_shutdown(
+    let socket_addr_session = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 7288);
+
+    let _ = join!(
+        Server::new(TcpListener::bind(socket_addr)).run_with_graceful_shutdown(
             app,
             async move { ctrl_c().await.unwrap_or(()) },
             Some(Duration::from_secs(1)),
-        )
-        .await?;
+        ),
+        Server::new(TcpListener::bind(socket_addr_session)).run_with_graceful_shutdown(
+            app_session,
+            async move { ctrl_c().await.unwrap_or(()) },
+            Some(Duration::from_secs(1)),
+        ),
+    );
 
     Ok(())
 }
