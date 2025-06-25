@@ -8,9 +8,9 @@ COPY src/ src/
 COPY Cargo.toml Cargo.lock ./
 
 RUN \
-  --mount=type=cache,target=/usr/local/cargo/registry \
-  --mount=type=cache,target=/usr/src/patrol/target \
-  cargo install --path .
+    --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/src/patrol/target \
+    cargo install --path .
 
 FROM alpine:3
 
@@ -29,6 +29,7 @@ COPY templates/ templates/
 
 VOLUME ["/app/keys/", "/app/.env"]
 EXPOSE 7287
+HEALTHCHECK CMD "curl", "-f", "http://localhost:7287/heartbeat"
 
 COPY --from=builder /usr/local/cargo/bin/patrol /usr/local/bin/patrol
 
