@@ -57,10 +57,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Connect to the database
     log::info!("Connecting to the database");
-    let database_url_dbmate = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
-    let database_url = database_url_dbmate
-        .strip_suffix("?sslmode=disable")
-        .expect("DATABASE_URL is not set (or does not end with `?sslmode=disable`)");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
     let database = Database::connect(database_url).await?;
 
     let is_first_admin_registered = is_first_admin_registered(&database).await?;
