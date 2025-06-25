@@ -27,10 +27,11 @@ COPY bin/ bin/
 COPY db/ db/
 COPY templates/ templates/
 
-VOLUME ["/app/keys/", "/app/.env"]
-EXPOSE 7287
-HEALTHCHECK CMD "curl", "-f", "http://localhost:7287/heartbeat"
-
 COPY --from=builder /usr/local/cargo/bin/patrol /usr/local/bin/patrol
+
+VOLUME ["/app/keys/", "/app/.env"]
+EXPOSE 7287 7288
+HEALTHCHECK --start-interval=250ms --start-period=5s \
+    CMD curl -f http://localhost:7287/heartbeat
 
 CMD "/app/bin/run.sh"
