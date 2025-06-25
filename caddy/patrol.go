@@ -1,21 +1,13 @@
 package patrol
 
 import (
-	"context"
-	"encoding/base64"
-	"errors"
-	"fmt"
+	"encoding/json"
+	"io"
 	"net/http"
 	"os"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp/caddyauth"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -33,32 +25,13 @@ func init() {
 }
 
 type Patrol struct {
-	jwkSet *jwk.Set
-
-	redis  *redis.Client
+	client *http.Client
 	logger *zap.Logger
 }
 
 func (p *Patrol) Provision(ctx caddy.Context) error {
+	p.client = &http.Client{}
 	p.logger = ctx.Logger()
-	return nil
-}
-
-func (p *Patrol) Validate() error {
-	jwkSet, err := jwk.Fetch(context.Background(), jwkUrl)
-	if err != nil {
-		return err
-	}
-
-	p.jwkSet = &jwkSet
-
-	redisOpts, err := redis.ParseURL(redisUrl)
-	if err != nil {
-		return err
-	}
-
-	p.redis = redis.NewClient(redisOpts)
-
 	return nil
 }
 
@@ -69,65 +42,43 @@ func (Patrol) CaddyModule() caddy.ModuleInfo {
 	}
 }
 
+type user struct {
+	username string
+}
+
 func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.User, bool, error) {
 	// Extract the Patrol cookie
 	cookie, err := r.Cookie("patrol")
 	if err != nil {
 		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
 		defer p.logger.Error("No cookie found", zap.Error(err))
-		return caddyauth.User{}, false, nil
+		return caddyauth.User{}, false, err
 	}
 
-	// Validate the JWT
-	token, err := jwt.ParseString(
-		cookie.Value,
-		jwt.WithIssuer("patrol"),
-		jwt.WithKeySet(*p.jwkSet),
-		jwt.WithAcceptableSkew(time.Minute),
-	)
+	resp, err := p.client.Get("http://patrol:7288/session?id=" + cookie.Value)
 	if err != nil {
 		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
-		defer p.logger.Error("Invalid token", zap.Error(err))
-		return caddyauth.User{}, false, nil
+		p.logger.Error("Failed to check session with Patrol", zap.Error(err))
+		return caddyauth.User{}, false, err
 	}
+	defer resp.Body.Close()
 
-	// Check Redis whether the key is still active
-	key := fmt.Sprintf("token:%s:%s", token.Subject(), token.JwtID())
-	exists, err := p.redis.Exists(context.Background(), key).Result()
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
+		p.logger.Error("Failed to read Patrol response", zap.Error(err))
 		return caddyauth.User{}, false, err
 	}
 
-	if exists != 1 {
-		return caddyauth.User{}, false, nil
-	}
+	var user user
+	json.Unmarshal(body, &user)
 
-	base64URLPayload := strings.Split(cookie.Value, ".")
-	if len(base64URLPayload) != 3 {
-		return caddyauth.User{}, false, errors.New("invalid token")
-	}
+	r.Header.Set("X-Patrol", string(body))
 
-	payload, err := base64.RawURLEncoding.DecodeString(base64URLPayload[1])
-	if err != nil {
-		return caddyauth.User{}, false, err
-	}
-
-	var dataBuilder strings.Builder
-	for _, b := range string(payload) {
-		if b < 128 {
-			dataBuilder.WriteRune(b)
-		} else {
-			dataBuilder.WriteString("\\u" + fmt.Sprintf("%04s", strconv.FormatInt(int64(b), 16)))
-		}
-	}
-
-	r.Header.Set("X-Patrol", dataBuilder.String())
-
-	return caddyauth.User{ID: token.Subject()}, true, nil
+	return caddyauth.User{ID: user.username}, true, nil
 }
 
 var (
 	_ caddy.Provisioner       = (*Patrol)(nil)
-	_ caddy.Validator         = (*Patrol)(nil)
 	_ caddyauth.Authenticator = (*Patrol)(nil)
 )
