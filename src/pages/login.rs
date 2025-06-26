@@ -1,7 +1,5 @@
 use poem::{
-    error::InternalServerError,
     handler,
-    http::StatusCode,
     web::{
         cookie::{Cookie, CookieJar},
         Data, Form, Html, Query, Redirect,
