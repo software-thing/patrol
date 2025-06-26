@@ -29,7 +29,7 @@ COPY templates/ templates/
 
 COPY --from=builder /usr/local/cargo/bin/patrol /usr/local/bin/patrol
 
-VOLUME ["/app/keys/", "/app/.env"]
+VOLUME /app/data
 EXPOSE 7287 7288
 HEALTHCHECK --start-interval=250ms --start-period=5s \
     CMD curl -f http://localhost:7287/heartbeat

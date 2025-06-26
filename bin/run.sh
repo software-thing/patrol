@@ -2,7 +2,7 @@
 
 echo "Applying migrations"
 dbmate -v
-dbmate up
+dbmate -url "sqlite:data/patrol.db" up
 
 echo "Starting Patrol"
 exec patrol

@@ -1,12 +1,9 @@
-use std::{
-    env,
-    net::{Ipv4Addr, SocketAddrV4},
-};
+use std::net::{Ipv4Addr, SocketAddrV4};
 
 use dotenvy::dotenv;
 use poem::{
-    get, handler, http::StatusCode, listener::TcpListener, middleware::CookieJarManager,
-    post, EndpointExt, Route, Server,
+    get, handler, http::StatusCode, listener::TcpListener, middleware::CookieJarManager, post,
+    EndpointExt, Route, Server,
 };
 use sea_orm::Database;
 use tera::Tera;
@@ -61,8 +58,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Connect to the database
     log::info!("Connecting to the database");
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set");
-    let database = Database::connect(database_url).await?;
+    let database = Database::connect("data/patrol.db").await?;
 
     let is_first_admin_registered = is_first_admin_registered(&database).await?;
 
@@ -72,7 +68,10 @@ async fn main() -> anyhow::Result<()> {
     let authenticated_routes = Route::new()
         .at("/", get(pages::index))
         .at("/account", get(pages::account::get))
-        .at("/account/change-password", post(pages::account::change_password))
+        .at(
+            "/account/change-password",
+            post(pages::account::change_password),
+        )
         .around(session::session_middleware);
 
     let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
