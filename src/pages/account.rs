@@ -4,20 +4,19 @@ use poem::{
 };
 use tera::{Context, Tera};
 
-use crate::{token::Claims, BASE_PATH};
+use crate::{internal_server_error, session::Session};
 
 #[handler]
 pub async fn get(
+    Data(session): Data<&Session>,
     Data((tera, context)): Data<&(Tera, Context)>,
-    Data(user): Data<&Claims>,
-) -> anyhow::Result<Html<String>> {
+) -> poem::Result<Html<String>> {
     let mut ctx = Context::new();
-    ctx.insert("base_path", BASE_PATH);
-    ctx.insert("user", user);
 
     ctx.extend(context.clone());
+    ctx.insert("user", session);
 
     tera.render("account.html.tera", &ctx)
-        .map_err(anyhow::Error::new)
+        .map_err(internal_server_error)
         .map(Html)
 }

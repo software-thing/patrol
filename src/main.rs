@@ -56,7 +56,8 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let context = tera::Context::new();
+    let mut context = tera::Context::new();
+    context.insert("base_path", BASE_PATH);
 
     // Connect to the database
     log::info!("Connecting to the database");
