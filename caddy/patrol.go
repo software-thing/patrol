@@ -85,7 +85,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 		return caddyauth.User{}, false, err
 	}
 
-	if resp.StatusCode != http.StatusUnauthorized {
+	if resp.StatusCode == http.StatusUnauthorized {
 		redirectToLogin(w, r)
 		defer p.logger.Debug("Unauthorized", zap.Int("status", resp.StatusCode))
 		return caddyauth.User{}, false, err
