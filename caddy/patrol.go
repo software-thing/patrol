@@ -2,12 +2,14 @@ package patrol
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 
 	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp/caddyauth"
 	"go.uber.org/zap"
 )
@@ -57,7 +59,9 @@ func removePatrolCookie(w http.ResponseWriter) {
 }
 
 func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, patrolBasePath+"/login?redirect_to="+url.QueryEscape(r.RequestURI), http.StatusSeeOther)
+	originalURI := r.Context().Value(caddyhttp.OriginalRequestCtxKey).(http.Request).URL.String()
+	fmt.Println(originalURI)
+	http.Redirect(w, r, patrolBasePath+"/login?redirect_to="+url.QueryEscape(originalURI), http.StatusSeeOther)
 }
 
 func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.User, bool, error) {

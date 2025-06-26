@@ -24,12 +24,7 @@ pub async fn get(
     Query(params): Query<LoginParams>,
 ) -> poem::Result<Html<String>> {
     let mut context = context.clone();
-    context.insert(
-        "redirect_to",
-        &params
-            .redirect_to
-            .unwrap_or_else(|| BASE_PATH.to_string() + "/account"),
-    );
+    context.insert("redirect_to", &params.redirect_to);
 
     tera.render("login.html.tera", &context)
         .map_err(internal_server_error)
@@ -39,7 +34,7 @@ pub async fn get(
 #[derive(Clone, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 struct UserLogin {
-    redirect_to: String,
+    redirect_to: Option<String>,
 
     username: String,
     password: String,
@@ -52,6 +47,11 @@ pub async fn post(
     cookie_jar: &CookieJar,
     user_login: Form<UserLogin>,
 ) -> poem::Result<poem::Response> {
+    let redirect_to = match user_login.redirect_to.as_ref().map(|url| url.trim()) {
+        Some("") | None => BASE_PATH.to_string() + "/account",
+        Some(redirect_to) => redirect_to.to_string(),
+    };
+
     let user: users::Model = match users::Entity::find_by_username(user_login.username.clone())
         .one(db)
         .await
@@ -62,8 +62,8 @@ pub async fn post(
             let mut ctx = Context::new();
             ctx.extend(context.clone());
             ctx.insert("username", &user_login.username);
-            ctx.insert("redirect_to", &user_login.redirect_to);
             ctx.insert("messages", &["Invalid username or password"]);
+            ctx.insert("redirect_to", &redirect_to);
 
             return tera
                 .render("login.html.tera", &ctx)
@@ -79,8 +79,8 @@ pub async fn post(
         let mut ctx = Context::new();
         ctx.extend(context.clone());
         ctx.insert("username", &user_login.username);
-        ctx.insert("redirect_to", &user_login.redirect_to);
         ctx.insert("messages", &["Invalid username or password"]);
+        ctx.insert("redirect_to", &redirect_to);
 
         return tera
             .render("login.html.tera", &ctx)
@@ -94,5 +94,5 @@ pub async fn post(
 
     cookie_jar.add(cookie);
 
-    return Ok(Redirect::see_other(user_login.redirect_to.clone()).into_response());
+    return Ok(Redirect::see_other(redirect_to).into_response());
 }

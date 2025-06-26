@@ -3,18 +3,20 @@
 {% block title %}Login{% endblock %}
 
 {% block content %}
-  <h1>Login</h1>
-  <form method="post" style="display: flex; flex-direction: column;">
-    <input type="hidden" name="redirect-to" value="{{ redirect_to }}">
+<h1>Login</h1>
+<form method="post" style="display: flex; flex-direction: column;">
+  {% if redirect_to %}
+  <input type="hidden" name="redirect-to" value="{{ redirect_to }}">
+  {% endif %}
 
-    <label for="username">Username</label>
-    <input type="text" id="username" name="username" {% if username %}value="{{ username }}"{% endif -%} />
+  <label for="username">Username</label>
+  <input type="text" id="username" name="username" {% if username %}value="{{ username }}"{% endif -%} />
 
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" />
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" />
 
-    <input type="submit" value="Login" />
-  </form>
+  <input type="submit" value="Login" />
+</form>
 
-  <a href="/patrol/register">Register</a>
+<a href="/patrol/register">Register</a>
 {% endblock %}
