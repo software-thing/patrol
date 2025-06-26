@@ -2,6 +2,7 @@ package patrol
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,7 +47,7 @@ func (Patrol) CaddyModule() caddy.ModuleInfo {
 }
 
 type user struct {
-	username string
+	Username string
 }
 
 func removePatrolCookie(w http.ResponseWriter) {
@@ -70,7 +71,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 	if err != nil {
 		redirectToLogin(w, r)
 		defer p.logger.Debug("No cookie found", zap.Error(err))
-		return caddyauth.User{}, true, err
+		return caddyauth.User{}, false, nil
 	}
 
 	resp, err := p.client.Get("http://patrol:7288/session?id=" + cookie.Value)
@@ -92,7 +93,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 	if resp.StatusCode == http.StatusUnauthorized {
 		redirectToLogin(w, r)
 		defer p.logger.Debug("Unauthorized", zap.Int("status", resp.StatusCode))
-		return caddyauth.User{}, false, err
+		return caddyauth.User{}, false, errors.New("unauthorized")
 	}
 
 	var user user
@@ -104,7 +105,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 
 	r.Header.Set("x-patrol", string(body))
 
-	return caddyauth.User{ID: user.username}, true, nil
+	return caddyauth.User{ID: user.Username}, true, nil
 }
 
 var (
