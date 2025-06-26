@@ -1,3 +1,4 @@
+use base64::{prelude::BASE64_URL_SAFE, Engine};
 use poem::{http::StatusCode, Endpoint, Request};
 use sea_orm::{
     prelude::DateTimeUtc, ActiveModelBehavior, ActiveModelTrait, DatabaseConnection, Set,
@@ -26,8 +27,12 @@ pub struct Session {
 
 pub async fn session_middleware<E: Endpoint>(next: E, mut req: Request) -> poem::Result<E::Output> {
     // Try to extract the cookie's value
-    if let Some(token) = req.header("x-patrol") {
-        let session: Session = serde_json::from_str(token).map_err(|_| {
+    if let Some(base64_token) = req.header("x-patrol") {
+        let token = BASE64_URL_SAFE
+            .decode(base64_token)
+            .map_err(internal_server_error)?;
+
+        let session: Session = serde_json::from_slice(token.as_slice()).map_err(|_| {
             log::error!("Failed to parse the X-Patrol header with user information");
             poem::Error::from_string(
                 "Failed to parse the X-Patrol header with user information",

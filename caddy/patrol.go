@@ -1,6 +1,7 @@
 package patrol
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -103,7 +104,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 		return caddyauth.User{}, false, err
 	}
 
-	r.Header.Set("x-patrol", string(body))
+	r.Header.Set("x-patrol", base64.URLEncoding.EncodeToString(body))
 
 	return caddyauth.User{ID: user.Username}, true, nil
 }
