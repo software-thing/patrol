@@ -32,8 +32,6 @@ pub fn internal_server_error(err: impl std::error::Error) -> poem::Error {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenv()?;
-
     pretty_env_logger::init();
 
     // Embed styles
@@ -42,28 +40,21 @@ async fn main() -> anyhow::Result<()> {
 
     // Setup templating
     log::info!("Loading templates");
-    let tera = match Tera::new("templates/**/*") {
-        Ok(mut t) => {
+    let tera = Tera::new("templates/**/*")
+        .map(|mut t| {
             t.autoescape_on(vec![".html"]);
             t
-        }
-        Err(e) => {
-            eprintln!("Template parsing error: {}", e);
-            std::process::exit(1);
-        }
-    };
+        })
+        .unwrap();
 
     let mut context = tera::Context::new();
     context.insert("base_path", BASE_PATH);
 
     // Connect to the database
     log::info!("Connecting to the database");
-    let database = Database::connect("data/patrol.db").await?;
+    let database = Database::connect("sqlite:data/patrol.db").await?;
 
     let is_first_admin_registered = is_first_admin_registered(&database).await?;
-
-    // Connect to Redis
-    log::info!("Connecting to Redis for token storage");
 
     let authenticated_routes = Route::new()
         .at("/", get(pages::index))
@@ -74,11 +65,8 @@ async fn main() -> anyhow::Result<()> {
         )
         .around(session::session_middleware);
 
-    let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
-
     let app = Route::new()
         .at("/heartbeat", get(heartbeat))
-        .nest("/.well-known", well_known_routes)
         .at(
             "/register",
             get(pages::register::get).post(pages::register::post),

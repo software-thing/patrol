@@ -70,7 +70,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 	if err != nil {
 		redirectToLogin(w, r)
 		defer p.logger.Debug("No cookie found", zap.Error(err))
-		return caddyauth.User{}, false, err
+		return caddyauth.User{}, true, err
 	}
 
 	resp, err := p.client.Get("http://patrol:7288/session?id=" + cookie.Value)
