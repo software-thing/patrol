@@ -24,19 +24,19 @@ pub struct Session {
     pub created_at: DateTimeUtc,
 }
 
-pub async fn session_middleware(mut req: Request) -> poem::Result<Request> {
+pub async fn session_middleware<E: Endpoint>(next: E, mut req: Request) -> poem::Result<E::Output> {
     // Try to extract the cookie's value
     if let Some(token) = req.header("X-Patrol") {
-        let user: Session = serde_json::from_str(token).map_err(|_| {
+        let session: Session = serde_json::from_str(token).map_err(|_| {
             poem::Error::from_string(
                 "Failed to parse the X-Patrol header with user information",
                 StatusCode::UNPROCESSABLE_ENTITY,
             )
         })?;
 
-        req.extensions_mut().insert(user);
+        req.extensions_mut().insert(session);
 
-        return Ok(req);
+        return next.call(req).await;
     }
 
     Err(poem::Error::from_status(StatusCode::UNAUTHORIZED))

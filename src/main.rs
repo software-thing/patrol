@@ -72,8 +72,7 @@ async fn main() -> anyhow::Result<()> {
     let authenticated_routes = Route::new()
         .at("/", get(pages::index))
         .at("/account", get(pages::account::get))
-        .at("/logout", get(pages::logout::get))
-        .before(session::session_middleware);
+        .around(session::session_middleware);
 
     let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
 
@@ -89,6 +88,7 @@ async fn main() -> anyhow::Result<()> {
             get(pages::register::is_available::get),
         )
         .at("/login", get(pages::login::get).post(pages::login::post))
+        .at("/logout", get(pages::logout::get))
         // .nest(
         //     "/static".to_string() + &styles_path,
         //     EmbeddedFileEndpoint::<Static>::new(&styles_path),
