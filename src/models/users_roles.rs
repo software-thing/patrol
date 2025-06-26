@@ -4,12 +4,12 @@ use sea_orm::{entity::prelude::*, FromQueryResult};
 #[sea_orm(table_name = "users_roles")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    user_username: String,
+    pub user_username: String,
 
     #[sea_orm(primary_key, auto_increment = false)]
-    role_title: String,
+    pub role_title: String,
 
-    created_at: DateTimeUtc,
+    pub created_at: DateTimeUtc,
 }
 
 #[derive(DerivePartialModel, FromQueryResult)]

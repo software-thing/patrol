@@ -23,6 +23,11 @@ mod well_known;
 
 const BASE_PATH: &'static str = "/patrol";
 
+pub fn internal_server_error(err: impl std::error::Error) -> poem::Error {
+    log::error!("{:?}", err);
+    poem::Error::from_status(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 // #[derive(RustEmbed)]
 // #[folder = "static/"]
 // #[include = "*.css"]
