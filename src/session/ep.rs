@@ -26,6 +26,10 @@ pub async fn get(
         .select_also(users::Entity)
         .one(db)
         .await
+        .map(|r| {
+            println!("{:#?}", r);
+            r
+        })
         .map_err(|_| poem::Error::from_status(StatusCode::INTERNAL_SERVER_ERROR))?
         .and_then(|(_session, user)| user)
         .ok_or(poem::Error::from_status(StatusCode::UNAUTHORIZED))?;

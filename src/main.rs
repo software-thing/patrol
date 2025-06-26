@@ -1,7 +1,6 @@
 use std::{
     env,
     net::{Ipv4Addr, SocketAddrV4},
-    time::Duration,
 };
 
 use dotenvy::dotenv;
@@ -11,7 +10,6 @@ use poem::{
 };
 use sea_orm::Database;
 use tera::Tera;
-use tokio::{join, signal::ctrl_c};
 
 use crate::is_first_admin_registered::is_first_admin_registered;
 
@@ -68,7 +66,8 @@ async fn main() -> anyhow::Result<()> {
     let authenticated_routes = Route::new()
         .at("/", get(pages::index))
         .at("/account", get(pages::account::get))
-        .at("/logout", get(pages::logout::get));
+        .at("/logout", get(pages::logout::get))
+        .before(session::session_middleware);
 
     let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
 
@@ -103,17 +102,9 @@ async fn main() -> anyhow::Result<()> {
     let socket_addr = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 7287);
     let socket_addr_session = SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 7288);
 
-    let _ = join!(
-        Server::new(TcpListener::bind(socket_addr)).run_with_graceful_shutdown(
-            app,
-            async move { ctrl_c().await.unwrap_or(()) },
-            Some(Duration::from_secs(1)),
-        ),
-        Server::new(TcpListener::bind(socket_addr_session)).run_with_graceful_shutdown(
-            app_session,
-            async move { ctrl_c().await.unwrap_or(()) },
-            Some(Duration::from_secs(1)),
-        ),
+    let _ = tokio::try_join!(
+        Server::new(TcpListener::bind(socket_addr)).run(app),
+        Server::new(TcpListener::bind(socket_addr_session)).run(app_session),
     );
 
     Ok(())

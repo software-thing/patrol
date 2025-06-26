@@ -22,7 +22,7 @@ pub struct Session {
     pub created_at: DateTimeUtc,
 }
 
-pub async fn session_middleware<E: Endpoint>(next: E, mut req: Request) -> poem::Result<E::Output> {
+pub async fn session_middleware(mut req: Request) -> poem::Result<Request> {
     // Try to extract the cookie's value
     if let Some(token) = req.header("X-Patrol") {
         let user: Session = serde_json::from_str(token).map_err(|_| {
@@ -34,7 +34,7 @@ pub async fn session_middleware<E: Endpoint>(next: E, mut req: Request) -> poem:
 
         req.extensions_mut().insert(user);
 
-        return next.call(req).await;
+        return Ok(req);
     }
 
     Err(poem::Error::from_status(StatusCode::UNAUTHORIZED))
