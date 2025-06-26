@@ -102,7 +102,7 @@ func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.
 		return caddyauth.User{}, false, err
 	}
 
-	r.Header.Set("X-Patrol", string(body))
+	r.Header.Set("x-patrol", string(body))
 
 	return caddyauth.User{ID: user.username}, true, nil
 }
