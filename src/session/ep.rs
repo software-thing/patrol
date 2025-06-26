@@ -3,11 +3,14 @@ use poem::{
     http::StatusCode,
     web::{Data, Json, Query},
 };
-use sea_orm::{DatabaseConnection, EntityTrait, JoinType, QuerySelect, RelationTrait};
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, JoinType, QueryFilter, QuerySelect, RelationTrait, SelectColumns,
+};
 use serde::Deserialize;
 
 use crate::{
-    models::{sessions, users, Sessions},
+    internal_server_error,
+    models::{sessions, users, users_roles, Roles, Sessions, UsersRoles},
     session::Session,
 };
 
@@ -26,13 +29,15 @@ pub async fn get(
         .select_also(users::Entity)
         .one(db)
         .await
-        .map(|r| {
-            println!("{:#?}", r);
-            r
-        })
-        .map_err(|_| poem::Error::from_status(StatusCode::INTERNAL_SERVER_ERROR))?
+        .map_err(internal_server_error)?
         .and_then(|(_session, user)| user)
         .ok_or(poem::Error::from_status(StatusCode::UNAUTHORIZED))?;
+
+    let roles = UsersRoles::find()
+        .filter(users_roles::Column::UserUsername.eq(user.username.clone()))
+        .all(db)
+        .await
+        .map_err(internal_server_error)?;
 
     Ok(Json(Session {
         username: user.username,
@@ -40,5 +45,6 @@ pub async fn get(
         last_name: user.last_name,
         profile_picture: user.profile_picture,
         created_at: user.created_at,
+        roles: roles.into_iter().map(|role| role.role_title).collect(),
     }))
 }

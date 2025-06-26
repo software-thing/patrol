@@ -19,6 +19,8 @@ pub struct Session {
 
     pub profile_picture: bool,
 
+    pub roles: Vec<String>,
+
     pub created_at: DateTimeUtc,
 }
 
