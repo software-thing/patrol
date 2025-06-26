@@ -28,11 +28,19 @@ pub struct Session {
 pub async fn session_middleware<E: Endpoint>(next: E, mut req: Request) -> poem::Result<E::Output> {
     // Try to extract the cookie's value
     if let Some(base64_token) = req.header("x-patrol") {
-        let token = BASE64_URL_SAFE
+        let token_bytes = BASE64_URL_SAFE
             .decode(base64_token)
             .map_err(internal_server_error)?;
 
-        let session: Session = serde_json::from_slice(token.as_slice()).map_err(|_| {
+        let token = str::from_utf8(&token_bytes).map_err(|_| {
+            log::error!("Failed to decode the X-Patrol from base64");
+            poem::Error::from_string(
+                "Failed to parse the X-Patrol header with user information",
+                StatusCode::UNPROCESSABLE_ENTITY,
+            )
+        })?;
+
+        let session: Session = serde_json::from_str(token).map_err(|_| {
             log::error!("Failed to parse the X-Patrol header with user information");
             poem::Error::from_string(
                 "Failed to parse the X-Patrol header with user information",
