@@ -3,7 +3,27 @@
 {% block title -%} Your Account {%- endblock %}
 
 {% block content %}
-  <h1>Account</h1>
-  <p>Logged in as {{ user.username }} ({{ user.first_name }} {{ user.last_name }})</p>
-  <a href="{{ base_path }}/logout">Logout</a>
+<h1>Account</h1>
+<p>Logged in as {{ user.username }} ({{ user.first_name }} {{ user.last_name }})</p>
+
+<h2>Change Password</h2>
+<div id="password-form">
+  <form action="{{ base_path }}/account/change-password" method="post">
+    <div>
+      <label for="current_password">Current Password:</label>
+      <input type="password" id="current_password" name="current_password" required>
+    </div>
+    <div>
+      <label for="new_password">New Password:</label>
+      <input type="password" id="new_password" name="new_password" required>
+    </div>
+    <div>
+      <label for="confirm_password">Confirm New Password:</label>
+      <input type="password" id="confirm_password" name="confirm_password" required>
+    </div>
+    <button type="submit">Change Password</button>
+  </form>
+</div>
+
+<a href="{{ base_path }}/logout">Logout</a>
 {% endblock %}

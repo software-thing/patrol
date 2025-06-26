@@ -6,7 +6,7 @@ use std::{
 use dotenvy::dotenv;
 use poem::{
     get, handler, http::StatusCode, listener::TcpListener, middleware::CookieJarManager,
-    EndpointExt, Route, Server,
+    post, EndpointExt, Route, Server,
 };
 use sea_orm::Database;
 use tera::Tera;
@@ -72,6 +72,7 @@ async fn main() -> anyhow::Result<()> {
     let authenticated_routes = Route::new()
         .at("/", get(pages::index))
         .at("/account", get(pages::account::get))
+        .at("/account/change-password", post(pages::account::change_password))
         .around(session::session_middleware);
 
     let well_known_routes = Route::new().at("/jwks.json", get(well_known::jwks));
