@@ -4,7 +4,7 @@ use poem::{
     http::StatusCode,
     web::{
         cookie::{Cookie, CookieJar},
-        Data, Form, Html, Redirect,
+        Data, Form, Html, Query, Redirect,
     },
     IntoResponse,
 };
@@ -13,17 +13,36 @@ use sea_orm::DatabaseConnection;
 use serde::Deserialize;
 use tera::{Context, Tera};
 
-use crate::{crypto, models::users, session, BASE_PATH};
+use crate::{crypto, internal_server_error, models::users, session, BASE_PATH};
+
+#[derive(Deserialize)]
+struct LoginParams {
+    redirect_to: Option<String>,
+}
 
 #[handler]
-pub async fn get(Data((tera, context)): Data<&(Tera, Context)>) -> anyhow::Result<Html<String>> {
+pub async fn get(
+    Data((tera, context)): Data<&(Tera, Context)>,
+    Query(params): Query<LoginParams>,
+) -> poem::Result<Html<String>> {
+    let mut context = context.clone();
+    context.insert(
+        "redirect_to",
+        &params
+            .redirect_to
+            .unwrap_or_else(|| BASE_PATH.to_string() + "/account"),
+    );
+
     tera.render("login.html.tera", &context)
+        .map_err(internal_server_error)
         .map(Html)
-        .map_err(anyhow::Error::new)
 }
 
 #[derive(Clone, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
 struct UserLogin {
+    redirect_to: String,
+
     username: String,
     password: String,
 }
@@ -35,11 +54,25 @@ pub async fn post(
     cookie_jar: &CookieJar,
     user_login: Form<UserLogin>,
 ) -> poem::Result<poem::Response> {
-    let user: users::Model = users::Entity::find_by_username(user_login.username.clone())
+    let user: users::Model = match users::Entity::find_by_username(user_login.username.clone())
         .one(db)
         .await
-        .map_err(InternalServerError)?
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+        .map_err(internal_server_error)?
+    {
+        Some(user) => user,
+        None => {
+            let mut ctx = Context::new();
+            ctx.extend(context.clone());
+            ctx.insert("username", &user_login.username);
+            ctx.insert("redirect_to", &user_login.redirect_to);
+            ctx.insert("messages", &["Invalid username or password"]);
+
+            return tera
+                .render("login.html.tera", &ctx)
+                .map_err(internal_server_error)
+                .map(|html| Html(html).into_response());
+        }
+    };
 
     let password_hash = crypto::hashing::parse_hash(&user.password_hash)?;
 
@@ -48,20 +81,20 @@ pub async fn post(
         let mut ctx = Context::new();
         ctx.extend(context.clone());
         ctx.insert("username", &user_login.username);
+        ctx.insert("redirect_to", &user_login.redirect_to);
+        ctx.insert("messages", &["Invalid username or password"]);
 
         return tera
             .render("login.html.tera", &ctx)
-            .map_err(InternalServerError)
+            .map_err(internal_server_error)
             .map(|html| Html(html).into_response());
     }
 
-    let session_id = session::new(db, user.username)
-        .await
-        .map_err(|_| poem::Error::from_status(StatusCode::INTERNAL_SERVER_ERROR))?;
-
-    let cookie = Cookie::new_with_str(session::PATROL_COOKIE, session_id);
+    let session_id = session::new(db, user.username).await?;
+    let mut cookie = Cookie::new_with_str(session::PATROL_COOKIE, session_id);
+    cookie.set_path("/");
 
     cookie_jar.add(cookie);
 
-    return Ok(Redirect::see_other(BASE_PATH.to_string() + "/account").into_response());
+    return Ok(Redirect::see_other(user_login.redirect_to.clone()).into_response());
 }

@@ -4,7 +4,7 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{crypto, models::sessions};
+use crate::{crypto, internal_server_error, models::sessions};
 
 pub mod ep;
 
@@ -42,7 +42,7 @@ pub async fn session_middleware<E: Endpoint>(next: E, mut req: Request) -> poem:
     Err(poem::Error::from_status(StatusCode::UNAUTHORIZED))
 }
 
-pub async fn new(db: &DatabaseConnection, username: String) -> anyhow::Result<String> {
+pub async fn new(db: &DatabaseConnection, username: String) -> poem::Result<String> {
     let session_id = crypto::id();
 
     sessions::ActiveModel {
@@ -52,7 +52,8 @@ pub async fn new(db: &DatabaseConnection, username: String) -> anyhow::Result<St
         ..sessions::ActiveModel::new()
     }
     .insert(db)
-    .await?;
+    .await
+    .map_err(internal_server_error)?;
 
     Ok(session_id)
 }

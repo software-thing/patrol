@@ -10,7 +10,7 @@
     ></script>
     <title>{% block title %}{% endblock %} – Patrol</title>
   </head>
-  <body>
+  <body style="display: grid; place-items: center;">
     {% if messages -%}
       <div class="messages">
         {% for message in messages %}

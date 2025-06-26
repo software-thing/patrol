@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/caddyserver/caddy/v2"
@@ -46,32 +47,56 @@ type user struct {
 	username string
 }
 
+func removePatrolCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:   "patrol",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	})
+}
+
+func redirectToLogin(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, patrolBasePath+"/login?redirect_to="+url.QueryEscape(r.RequestURI), http.StatusSeeOther)
+}
+
 func (p Patrol) Authenticate(w http.ResponseWriter, r *http.Request) (caddyauth.User, bool, error) {
 	// Extract the Patrol cookie
 	cookie, err := r.Cookie("patrol")
 	if err != nil {
-		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
-		defer p.logger.Error("No cookie found", zap.Error(err))
+		redirectToLogin(w, r)
+		defer p.logger.Debug("No cookie found", zap.Error(err))
 		return caddyauth.User{}, false, err
 	}
 
 	resp, err := p.client.Get("http://patrol:7288/session?id=" + cookie.Value)
 	if err != nil {
-		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
-		p.logger.Error("Failed to check session with Patrol", zap.Error(err))
+		redirectToLogin(w, r)
+		defer p.logger.Debug("Failed to check session with Patrol", zap.Error(err))
 		return caddyauth.User{}, false, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		http.Redirect(w, r, patrolBasePath+"/login", http.StatusSeeOther)
-		p.logger.Error("Failed to read Patrol response", zap.Error(err))
+		removePatrolCookie(w)
+		redirectToLogin(w, r)
+		defer p.logger.Debug("Failed to read Patrol response", zap.Error(err))
+		return caddyauth.User{}, false, err
+	}
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		redirectToLogin(w, r)
+		defer p.logger.Debug("Unauthorized", zap.Int("status", resp.StatusCode))
 		return caddyauth.User{}, false, err
 	}
 
 	var user user
-	json.Unmarshal(body, &user)
+	if err := json.Unmarshal(body, &user); err != nil {
+		redirectToLogin(w, r)
+		defer p.logger.Debug("Failed to unmarshal Patrol response", zap.Error(err))
+		return caddyauth.User{}, false, err
+	}
 
 	r.Header.Set("X-Patrol", string(body))
 

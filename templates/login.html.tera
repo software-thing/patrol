@@ -4,7 +4,9 @@
 
 {% block content %}
   <h1>Login</h1>
-  <form method="post">
+  <form method="post" style="display: flex; flex-direction: column;">
+    <input type="hidden" name="redirect-to" value="{{ redirect_to }}">
+
     <label for="username">Username</label>
     <input type="text" id="username" name="username" {% if username %}value="{{ username }}"{% endif -%} />
 
