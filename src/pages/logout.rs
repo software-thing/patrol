@@ -4,11 +4,11 @@ use poem::{
     IntoResponse,
 };
 
-use crate::session;
+use crate::{session, BASE_PATH};
 
 #[handler]
 pub async fn get(cookie_jar: &CookieJar) -> anyhow::Result<poem::Response> {
     cookie_jar.remove(session::PATROL_COOKIE);
 
-    Ok(Redirect::see_other("/patrol/login").into_response())
+    Ok(Redirect::see_other(BASE_PATH.to_string() + "/login").into_response())
 }
