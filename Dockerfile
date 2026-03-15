@@ -34,4 +34,4 @@ EXPOSE 7287 7288
 HEALTHCHECK --start-interval=250ms --start-period=5s \
     CMD curl -f http://localhost:7287/heartbeat
 
-CMD "/app/bin/run.sh"
+ENTRYPOINT ["/app/bin/run.sh", "patrol"]
